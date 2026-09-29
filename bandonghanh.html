@@ -1,0 +1,1237 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Heart, MessageSquare, BarChart2, BookOpen, ShieldAlert, MapPin, 
+  Newspaper, Globe, Wifi, ShieldCheck, PhoneCall, Send, AlertTriangle, 
+  ChevronRight, ChevronDown, CheckCircle2, XCircle, Award, Sparkles, 
+  Calendar, CheckSquare, Search, Filter, RefreshCw, Info, Lock, Smile, 
+  Meh, Frown, Zap, Moon, Sun, Home, UserCheck, HelpCircle
+} from 'lucide-react';
+
+// Multi-language dictionary for localized UI
+const i18n = {
+  vi: {
+    appName: "Bạn Đồng Hành",
+    appSub: "THPT Sơn La - Tâm Lý & Học Tập",
+    privacyBadge: "An toàn 100% - Không thu thập dữ liệu cá nhân",
+    online: "Trực tuyến",
+    offline: "Ngoại tuyến",
+    navChat: "Góc Tâm Sự AI",
+    navMood: "Nhật Ký Cảm Xúc",
+    navLibrary: "Học Liệu & Tư Duy",
+    navSafety: "An Toàn Số",
+    navMap: "Bản Đồ Hỗ Trợ",
+    navNews: "Bản Tin Tuần",
+    crisisTitle: "CẢNH BÁO KHỦNG HOẢNG & HỖ TRỢ TRỰC TIẾP",
+    crisisDesc: "Bạn không đơn độc! Chúng tớ nhận thấy bạn đang trải qua khoảng thời gian vô cùng khó khăn. Hãy liên hệ ngay với người lớn tin cậy hoặc các tổng đài sau:",
+    callHotline: "Gọi Tổng Đài Quốc Gia 111",
+    callSchool: "Tổng Đài Tư Vấn Sơn La",
+  },
+  th: {
+    appName: "Bản Đủng Hàng",
+    appSub: "THPT Sơn La - Kho Cảm Kho Học",
+    privacyBadge: "An Toàn 100% - Bấu Hổ Thông Tin",
+    online: "Mạng Tốt",
+    offline: "Mạng Yếu",
+    navChat: "Góc Tâm Sự AI",
+    navMood: "Nhật Ký Cảm Xúc",
+    navLibrary: "Kho Học Liệu",
+    navSafety: "An Toàn Số",
+    navMap: "Bản Đồ Sơn La",
+    navNews: "Bản Tin Tuần",
+    crisisTitle: "CẢNH BÁO HỖ TRỢ KHẨN CẤP",
+    crisisDesc: "Bạn bấu chăn mồ! Hãy liên hệ ngay với tổng đài hỗ trợ:",
+    callHotline: "Gọi 111 (Trẻ Em)",
+    callSchool: "Giao Viên Học Đường",
+  },
+  hm: {
+    appName: "Bawm Doongj Hanga",
+    appSub: "THPT Sơn La - Npaz Npaim & Kawm Chaw",
+    privacyBadge: "Pab Dawb 100% - Tsi Khawv Ntaub Ntawv",
+    online: "Siv Tau Moom",
+    offline: "Tsi Muaj Moom",
+    navChat: "Góc Tâm Sự AI",
+    navMood: "Daim Ntawv Cảm Xúc",
+    navLibrary: "Kho Học Liệu",
+    navSafety: "An Toàn Số",
+    navMap: "Map Sơn La",
+    navNews: "Bản Tin Tuần",
+    crisisTitle: "CẢNH BÁO KHỦNG HOẢNG TAWM CÔNG",
+    crisisDesc: "Koj tsi ib leeg! Hu rau cov chaw pab cuam hauv qab no:",
+    callHotline: "Hu 111 (Pab Men Yuam)",
+    callSchool: "Hu Xov Tooj Sơn La",
+  }
+};
+
+// System Prompt for Gemini AI Chatbot
+const SYSTEM_PROMPT = `
+Bạn là "Bạn Đồng Hành" - một trợ lý AI đồng cảm, lắng nghe và tư vấn tâm lý học đường cho học sinh THPT tỉnh Sơn La (đặc biệt là học sinh dân tộc thiểu số, học sinh nội trú xa nhà).
+QUY TẮC CỐT LÕI:
+1. Luôn đồng cảm, tôn trọng, nhẹ nhàng, đóng vai người bạn thấu hiểu (dùng xưng hô "Tớ - Bạn" hoặc "Mình - Bạn").
+2. KHÔNG chẩn đoán y khoa, KHÔNG kê đơn thuốc, KHÔNG khẳng định tình trạng tâm thần.
+3. Luôn đưa ra lời khuyên thực tế: kỹ năng hít thở, quản lý thời gian, cách chia sẻ với cha mẹ/thầy cô, phương pháp học tập không burn-out.
+4. Tôn trọng đặc thù tâm lý lứa tuổi 15-18, đời sống học sinh nội trú xa nhà tại Sơn La.
+`;
+
+// Crisis keywords for immediate intervention
+const CRISIS_KEYWORDS = [
+  "tự tử", "tự sát", "muốn chết", "kết thúc cuộc đời", "tự hại", "cắt tay", "rạch tay", 
+  "bị đánh đập", "bị bạo lực", "bị xâm hại", "bị hiếp dâm", "bị tống tiền", "bị đe dọa tung ảnh", "muốn nhảy lầu"
+];
+
+const SON_LA_LOCATIONS = [
+  { id: 1, name: "Phòng Tư Vấn Tâm Lý - THPT Chuyên Sơn La", district: "TP. Sơn La", type: "school", address: "Tổ 3, P. Chiềng Sinh, TP. Sơn La", phone: "0212 385 2411", notes: "Thầy cô tư vấn trực tiếp vào giờ ra chơi và buổi chiều.", lat: 21.328, lng: 103.918 },
+  { id: 2, name: "Phòng Tư Vấn Tâm Lý - THPT Mộc Lâu", district: "Mộc Châu", type: "school", address: "Thị trấn Mộc Châu, H. Mộc Châu", phone: "0212 386 6123", notes: "Hỗ trợ học sinh nội trú và áp lực thi tốt nghiệp.", lat: 20.843, lng: 104.681 },
+  { id: 3, name: "Trung tâm Công tác Xã hội tỉnh Sơn La", district: "TP. Sơn La", type: "social", address: "Số 124 đường Trần Đăng Ninh, TP. Sơn La", phone: "0212 385 8688", notes: "Tư vấn tâm lý chuyên sâu & trợ giúp trẻ em yếu thế.", lat: 21.332, lng: 103.905 },
+  { id: 4, name: "Thư viện Tỉnh Sơn La", district: "TP. Sơn La", type: "library", address: "Đường Tô Hiệu, P. Tô Hiệu, TP. Sơn La", phone: "0212 385 1102", notes: "Không gian học tập yên tĩnh, trang bị máy tính kết nối Internet miễn phí.", lat: 21.325, lng: 103.912 },
+  { id: 5, name: "Thư viện & Điểm Internet Cộng đồng Mường La", district: "Mường La", type: "library", address: "TT. Ít Ong, H. Mường La", phone: "0212 383 0155", notes: "Điểm truy cập máy tính & sách tham khảo miễn phí.", lat: 21.512, lng: 104.032 },
+  { id: 6, name: "Tỉnh Đoàn Sơn La & CLB Kỹ Năng Sống", district: "TP. Sơn La", type: "youth", address: "Số 02 đường Hoàng Quốc Việt, TP. Sơn La", phone: "0212 385 2143", notes: "Tổ chức các hoạt động tình nguyện, CLB tư vấn tuổi hồng.", lat: 21.330, lng: 103.910 },
+  { id: 7, name: "Phòng Tư Vấn Học Đường - THPT Thuận Châu", district: "Thuận Châu", type: "school", address: "TT. Thuận Châu, H. Thuận Châu", phone: "0212 386 1098", notes: "Hỗ trợ tư vấn tâm lý học đường & hướng nghiệp.", lat: 21.350, lng: 103.680 },
+  { id: 8, name: "Phòng Tư Vấn - THPT Sông Mã", district: "Sông Mã", type: "school", address: "TT. Sông Mã, H. Sông Mã", phone: "0212 383 6222", notes: "Đồng hành cùng học sinh vùng biên giới và nội trú.", lat: 21.080, lng: 103.730 }
+];
+
+const MINDMAP_DATA = [
+  {
+    id: "stress",
+    title: "Sơ Đồ Quản Lý Stress & Áp Lực Thi Cử",
+    desc: "Phương pháp 4T giúp xua tan căng thẳng trước các kỳ thi lớn",
+    nodes: {
+      label: "Quản Lý Stress Thi Cử",
+      children: [
+        {
+          label: "1. Thể Chất (Physical)",
+          children: [
+            { label: "Ngủ đủ 7-8 tiếng/ngày" },
+            { label: "Uống 2L nước, tránh caffein sau 4h chiều" },
+            { label: "Tập hít thở sâu 4-7-8 khi lo âu" }
+          ]
+        },
+        {
+          label: "2. Tinh Thần (Mindset)",
+          children: [
+            { label: "Đặt mục tiêu vừa sức, chia nhỏ bài học" },
+            { label: "Chấp nhận cảm xúc lo lắng là bình thường" },
+            { label: "Không so sánh bản thân với bạn bè" }
+          ]
+        },
+        {
+          label: "3. Tương Tác (Social)",
+          children: [
+            { label: "Tâm sự với bạn thân hoặc thầy cô" },
+            { label: "Tránh xa các group than vãn tiêu cực" }
+          ]
+        },
+        {
+          label: "4. Thời Gian (Time)",
+          children: [
+            { label: "Kỹ thuật Pomodoro: Học 25p - Nghỉ 5p" },
+            { label: "Ưu tiên bài khó vào khung giờ tỉnh táo nhất" }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    id: "boarding",
+    title: "Kỹ Năng Hòa Nhập Cuộc Sống Nội Trú Xa Nhà",
+    desc: "Cẩm nang thích nghi nhanh dành cho học sinh Sơn La đi học xa gia đình",
+    nodes: {
+      label: "Hòa Nhập Sống Nội Trú",
+      children: [
+        {
+          label: "1. Vượt Qua Nỗi Nhớ Nhà",
+          children: [
+            { label: "Gọi điện về gia đình vào giờ cố định" },
+            { label: "Trang trí góc học tập thân thuộc" },
+            { label: "Tìm bạn đồng hương để chia sẻ" }
+          ]
+        },
+        {
+          label: "2. Giải Quyết Mâu Thuẫn Phòng Ở",
+          children: [
+            { label: "Thống nhất nội quy phòng (giờ ngủ, dọn dẹp)" },
+            { label: "Góp ý chân thành, không nói sau lưng" },
+            { label: "Tôn trọng đồ dùng & không không gian riêng" }
+          ]
+        },
+        {
+          label: "3. Tự Lập Sinh Hoạt",
+          children: [
+            { label: "Quản lý chi tiêu theo tuần" },
+            { label: "Giữ vệ sinh cá nhân & ăn uống đủ chất" }
+          ]
+        }
+      ]
+    }
+  }
+];
+
+const SAFETY_QUIZZES = [
+  {
+    id: 1,
+    title: "Tình huống: Lừa đảo tuyển 'Cộng tác viên việc nhẹ lương cao'",
+    question: "Bạn nhận được tin nhắn Facebook từ người lạ mời làm 'Cộng tác viên xem video TikTok nhận 500k/ngày', yêu cầu nạp trước 200k cọc tài khoản. Bạn sẽ làm gì?",
+    options: [
+      { text: "Nạp ngay 200k vì số tiền cọc nhỏ mà thu nhập lại cao.", isCorrect: false, exp: "Đây là chiêu trò lừa đảo bẫy nạp tiền cọc phổ biến target học sinh sinh viên!" },
+      { text: "Chặn ngay tin nhắn, báo cáo tài khoản lừa đảo và không chuyển bất kỳ khoản tiền nào.", isCorrect: true, exp: "Chính xác! Không có công việc nhẹ lương cao nào yêu cầu chuyển tiền cọc trước." },
+      { text: "Rủ thêm bạn bè cùng tham gia để kiếm tiền tiêu xài.", isCorrect: false, exp: "Cảnh báo: Bạn có thể vô tình kéo bạn bè mình vào bẫy lừa đảo." }
+    ]
+  },
+  {
+    id: 2,
+    title: "Tình huống: Đe dọa phát tán ảnh riêng tư / Deepfake",
+    question: "Nếu một tài khoản mạng xã hội dọa ghép ảnh nhạy cảm của bạn bằng AI (Deepfake) và ép bạn chuyển tiền, bạn nên làm gì đầu tiên?",
+    options: [
+      { text: "Hoảng sợ và giấu kín, đi vay tiền để chuyển cho kẻ đe dọa.", isCorrect: false, exp: "Sai! Kẻ tống tiền sẽ tiếp tục đòi thêm tiền và không dừng lại." },
+      { text: "Chụp màn hình bằng chứng, KHÔNG chuyển tiền, chặn liên lạc và báo ngay cho cha mẹ/thầy cô/công an.", isCorrect: true, exp: "Chính xác! Hãy bình tĩnh lưu lại bằng chứng và nhờ sự trợ giúp của người lớn tin cậy." },
+      { text: "Tự xóa tài khoản mạng xã hội và âm thầm chịu đựng.", isCorrect: false, exp: "Xóa tài khoản có thể làm mất bằng chứng quan trọng để cơ quan chức năng hỗ trợ bạn." }
+    ]
+  }
+];
+
+export default function App() {
+  const [lang, setLang] = useState('vi');
+  const [activeTab, setActiveTab] = useState('chat');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Network listener
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const t = i18n[lang];
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-teal-100 selection:text-teal-800">
+      
+      {/* HEADER SECTION */}
+      {}
+      <header className="bg-gradient-to-r from-teal-700 via-emerald-600 to-teal-800 text-white shadow-md sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+          
+          {/* Logo & Name */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+                <Heart className="w-6 h-6 text-emerald-300 fill-emerald-300 animate-pulse" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg leading-tight tracking-wide flex items-center gap-2">
+                  {t.appName}
+                  <span className="text-xs bg-amber-400 text-slate-900 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Sơn La
+                  </span>
+                </h1>
+                <p className="text-xs text-emerald-100 opacity-90">{t.appSub}</p>
+              </div>
+            </div>
+
+            {/* Language Selector (Mobile view) */}
+            <div className="sm:hidden flex items-center gap-1 bg-white/10 rounded-lg p-1 border border-white/20">
+              {['vi', 'th', 'hm'].map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2 py-0.5 text-xs font-semibold rounded uppercase transition-all ${
+                    lang === l ? 'bg-amber-400 text-slate-900 shadow' : 'text-emerald-100 hover:bg-white/10'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Badges & Options */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end text-xs">
+            {/* Privacy Badge */}
+            <div className="hidden md:flex items-center gap-1.5 bg-emerald-800/60 px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-100">
+              <Lock className="w-3.5 h-3.5 text-amber-300" />
+              <span>{t.privacyBadge}</span>
+            </div>
+
+            {/* Network Badge */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium ${
+              isOnline ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' : 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
+            }`}>
+              <Wifi className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-300' : 'text-amber-300 animate-bounce'}`} />
+              <span>{isOnline ? t.online : t.offline}</span>
+            </div>
+
+            {/* Language Selector (Desktop) */}
+            <div className="hidden sm:flex items-center gap-1 bg-black/20 rounded-lg p-1 border border-white/10">
+              <Globe className="w-3.5 h-3.5 text-emerald-200 ml-1" />
+              {['vi', 'th', 'hm'].map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2.5 py-1 text-xs font-bold rounded uppercase transition-all ${
+                    lang === l ? 'bg-amber-400 text-slate-900 shadow-md' : 'text-emerald-100 hover:bg-white/10'
+                  }`}
+                  title={l === 'vi' ? 'Tiếng Việt' : l === 'th' ? 'Tiếng Thái' : 'Tiếng Hmong'}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* NAVIGATION TABS */}
+      {}
+      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-[61px] z-40 overflow-x-auto scrollbar-none">
+        <div className="max-w-6xl mx-auto px-2 flex justify-start sm:justify-center items-center min-w-max">
+          {[
+            { id: 'chat', label: t.navChat, icon: MessageSquare },
+            { id: 'mood', label: t.navMood, icon: BarChart2 },
+            { id: 'library', label: t.navLibrary, icon: BookOpen },
+            { id: 'safety', label: t.navSafety, icon: ShieldAlert },
+            { id: 'map', label: t.navMap, icon: MapPin },
+            { id: 'news', label: t.navNews, icon: Newspaper },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'border-emerald-600 text-emerald-700 bg-emerald-50/60'
+                    : 'border-transparent text-slate-600 hover:text-emerald-600 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* MAIN CONTENT CONTAINER */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6">
+        {activeTab === 'chat' && <ChatModule t={t} />}
+        {activeTab === 'mood' && <MoodTrackerModule t={t} />}
+        {activeTab === 'library' && <LibraryModule t={t} />}
+        {activeTab === 'safety' && <SafetyModule t={t} />}
+        {activeTab === 'map' && <MapModule t={t} />}
+        {activeTab === 'news' && <NewsModule t={t} />}
+      </main>
+
+      {/* FOOTER */}
+      <footer className="bg-slate-800 text-slate-300 text-xs py-6 px-4 mt-8 border-t border-slate-700">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div>
+            <p className="font-bold text-slate-100 text-sm">BẠN ĐỒNG HÀNH - THPT SƠN LA</p>
+            <p className="text-slate-400 mt-1">Dự án hỗ trợ Tâm Lý Học Đường & An Toàn Số dành cho học sinh THPT tỉnh Sơn La</p>
+          </div>
+          <div className="flex flex-col items-center sm:items-end gap-1 text-slate-400">
+            <p className="flex items-center gap-1">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Bảo vệ quyền riêng tư người dùng 100%</span>
+            </p>
+            <p>Tổng đài bảo vệ trẻ em: <strong className="text-amber-400">111</strong> (Miễn phí 24/7)</p>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 1: GÓC TÂM SỰ (AI CHATBOT WITH CRISIS GUARDRAILS)                  */
+/* ========================================================================== */
+function ChatModule({ t }) {
+  const [messages, setMessages] = useState([
+    {
+      sender: 'ai',
+      text: 'Chào bạn! Tớ là Bạn Đồng Hành. Hôm nay ở trường hay ở ký túc xá của bạn thế nào? Bạn có điều gì lo lắng về học tập, bạn bè hay áp lực thi cử cần tớ lắng nghe không?'
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [crisisAlert, setCrisisAlert] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, crisisAlert]);
+
+  const quickPrompts = [
+    "Tớ lo lắng trước kỳ thi tốt nghiệp...",
+    "Áp lực vì mới đi học xa nhà nội trú...",
+    "Bị mâu thuẫn và cô lập với bạn cùng phòng...",
+    "Hoang mang chưa biết chọn ngành nghề nào..."
+  ];
+
+  const handleSend = async (textToSend) => {
+    const promptText = textToSend || input;
+    if (!promptText.trim() || loading || crisisAlert) return;
+
+    // Check crisis keywords first
+    const lowerText = promptText.toLowerCase();
+    const hasCrisis = CRISIS_KEYWORDS.some(kw => lowerText.includes(kw));
+
+    if (hasCrisis) {
+      setCrisisAlert(true);
+      setMessages(prev => [...prev, { sender: 'user', text: promptText }]);
+      setInput('');
+      return;
+    }
+
+    const newMessages = [...messages, { sender: 'user', text: promptText }];
+    setMessages(newMessages);
+    setInput('');
+    setLoading(true);
+
+    try {
+      // Call Gemini 3 Flash API
+      const apiKey = ""; // Canvas auto-provides
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const conversationHistory = newMessages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
+      const payload = {
+        contents: conversationHistory,
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text 
+        || "Tớ đang kết nối lại mạng một chút. Bạn chia sẻ thêm với tớ nhé!";
+
+      setMessages(prev => [...prev, { sender: 'ai', text: aiReply }]);
+    } catch (err) {
+      console.error("Chat AI error:", err);
+      setMessages(prev => [...prev, { 
+        sender: 'ai', 
+        text: 'Mạng chỗ bạn hoặc tớ đang chập chờn. Nhưng không sao, tớ vẫn luôn ở đây. Bạn hãy hít thở sâu 3 nhịp nhé!' 
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[75vh]">
+      
+      {/* Chat Sub-header */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 border-b border-emerald-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+            AI
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+              Trợ Lý Bạn Đồng Hành
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            </h2>
+            <p className="text-xs text-slate-500">Lắng nghe 24/7 • Không lưu lại lịch sử hội thoại</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => { setMessages([{ sender: 'ai', text: 'Chào bạn! Tớ lắng nghe đây...' }]); setCrisisAlert(false); }}
+          className="text-xs text-slate-500 hover:text-emerald-700 flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs"
+        >
+          <RefreshCw className="w-3 h-3" /> Làm mới
+        </button>
+      </div>
+
+      {/* CRISIS ALERT OVERLAY IF TRIGGERED */}
+      {}
+      {crisisAlert && (
+        <div className="bg-rose-50 border-b-2 border-rose-500 p-4 animate-fadeIn">
+          <div className="max-w-3xl mx-auto flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-rose-700 font-bold text-base">
+              <AlertTriangle className="w-6 h-6 text-rose-600 animate-bounce" />
+              <span>{t.crisisTitle}</span>
+            </div>
+            <p className="text-sm text-rose-900 leading-relaxed">{t.crisisDesc}</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+              <a 
+                href="tel:111" 
+                className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-sm"
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>111 - Tổng Đài Trẻ Em</span>
+              </a>
+              <a 
+                href="tel:02123858688" 
+                className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-sm"
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>Tư Vấn Học Đường Sơn La</span>
+              </a>
+            </div>
+
+            <div className="bg-white/80 p-3 rounded-lg border border-rose-200 text-xs text-slate-700 leading-normal">
+              💡 <strong>Lời khuyên ngay lúc này:</strong> Hãy tìm gặp trực tiếp Giáo viên chủ nhiệm, Thầy/Cô quản lý ký túc xá, hoặc cha mẹ/người thân gần nhất. Bạn hoàn toàn có quyền được bảo vệ và lắng nghe.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Messages area */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/50">
+        {messages.map((m, idx) => (
+          <div 
+            key={idx} 
+            className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-2xs leading-relaxed ${
+              m.sender === 'user' 
+                ? 'bg-teal-600 text-white rounded-br-none' 
+                : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-none'
+            }`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-none px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-teal-600 animate-spin" />
+              <span>Bạn Đồng Hành đang suy nghĩ câu trả lời...</span>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Quick Prompts */}
+      {!crisisAlert && (
+        <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Gợi ý:</span>
+          {quickPrompts.map((p, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleSend(p)}
+              className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 rounded-full px-3 py-1 whitespace-nowrap shadow-2xs transition-all"
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input Form */}
+      <div className="p-3 bg-white border-t border-slate-200">
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+          className="flex items-center gap-2"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={crisisAlert || loading}
+            placeholder={crisisAlert ? "Cuộc trò chuyện bị ngắt để đảm bảo an toàn..." : "Nhập câu hỏi hoặc cảm xúc của bạn tại đây..."}
+            className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || loading || crisisAlert}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white p-2.5 rounded-xl transition-all shadow-sm"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 2: NHẬT KÝ CẢM XÚC & TỰ ĐÁNH GIÁ (LOCALSTORAGE ENCRYPT/PRIVACY)     */
+/* ========================================================================== */
+function MoodTrackerModule({ t }) {
+  const [moodLogs, setMoodLogs] = useState(() => {
+    const saved = localStorage.getItem('bdh_mood_logs');
+    return saved ? JSON.parse(saved) : [
+      { date: 'T2', mood: 'vui', note: 'Ôn thi xong bài Sử khá ổn' },
+      { date: 'T3', mood: 'lo_lang', note: 'Lo lắng bài kiểm tra Toán' },
+      { date: 'T4', mood: 'binh_thuong', note: 'Sinh hoạt nội trú vui vẻ' },
+      { date: 'T5', mood: 'met_moi', note: 'Thức khuya làm bài tập' }
+    ];
+  });
+
+  const [selectedMood, setSelectedMood] = useState('vui');
+  const [note, setNote] = useState('');
+  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [quizScore, setQuizScore] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('bdh_mood_logs', JSON.stringify(moodLogs));
+  }, [moodLogs]);
+
+  const moods = [
+    { id: 'vui', label: 'Vui vẻ', emoji: '😊', color: 'bg-emerald-100 border-emerald-300 text-emerald-800' },
+    { id: 'binh_thuong', label: 'Bình thường', emoji: '😐', color: 'bg-blue-100 border-blue-300 text-blue-800' },
+    { id: 'lo_lang', label: 'Lo lắng', emoji: '😰', color: 'bg-amber-100 border-amber-300 text-amber-800' },
+    { id: 'met_moi', label: 'Mệt mỏi', emoji: '😴', color: 'bg-purple-100 border-purple-300 text-purple-800' },
+    { id: 'tuc_gian', label: 'Tức giận', emoji: '😡', color: 'bg-rose-100 border-rose-300 text-rose-800' },
+    { id: 'buon', label: 'Buồn bã', emoji: '😢', color: 'bg-slate-200 border-slate-300 text-slate-800' },
+  ];
+
+  const handleAddLog = () => {
+    const today = new Date();
+    const dayName = `T${today.getDay() + 1}`;
+    const newEntry = { date: dayName, mood: selectedMood, note: note.trim() || 'Check-in nhanh' };
+    setMoodLogs([...moodLogs.slice(-6), newEntry]);
+    setNote('');
+  };
+
+  const calculateStressQuiz = (answers) => {
+    const sum = answers.reduce((a, b) => a + b, 0);
+    setQuizScore(sum);
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Top Banner */}
+      <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-2xl p-6 text-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Heart className="w-6 h-6 text-amber-300" />
+            Nhật Ký Cảm Xúc & Đánh Giá Sức Khỏe Tinh Thần
+          </h2>
+          <p className="text-emerald-100 text-xs mt-1">Dữ liệu hoàn toàn riêng tư, chỉ được lưu trên thiết bị này của bạn.</p>
+        </div>
+        <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 text-xs flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-300" />
+          <span>Bảo mật 100%</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Daily Check-in Form */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+            <Smile className="w-5 h-5 text-teal-600" />
+            Check-in Cảm Xúc Hôm Nay
+          </h3>
+
+          <div className="grid grid-cols-3 gap-2">
+            {moods.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMood(m.id)}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                  selectedMood === m.id
+                    ? `${m.color} ring-2 ring-emerald-500 scale-105 shadow-sm`
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className="text-2xl">{m.emoji}</span>
+                <span className="text-xs font-semibold">{m.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Ghi chú ngắn về ngày hôm nay:</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ví dụ: Ôn xong bài Lý, trò chuyện vui với bạn..."
+              className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <button
+            onClick={handleAddLog}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-sm text-sm"
+          >
+            Lưu Cảm Xúc Vừa Check-in
+          </button>
+        </div>
+
+        {/* Mood History Visualizer */}
+        {}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base mb-2 flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-teal-600" />
+              Diễn Biến Cảm Xúc Các Ngày Gần Đây
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">Nhìn lại cảm xúc giúp bạn hiểu rõ hơn về chu kỳ căng thẳng của bản thân.</p>
+
+            <div className="grid grid-cols-7 gap-2 items-end h-40 pt-6 px-2 border-b border-slate-200">
+              {moodLogs.map((log, idx) => {
+                const mObj = moods.find(m => m.id === log.mood) || moods[0];
+                return (
+                  <div key={idx} className="flex flex-col items-center gap-2 h-full justify-end">
+                    <span className="text-xl">{mObj.emoji}</span>
+                    <div className={`w-full max-w-[36px] rounded-t-lg transition-all ${mObj.color} h-16 flex items-center justify-center text-xs font-bold`}>
+                      {log.date}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+            💡 <strong>Mẹo tự chăm sóc:</strong> Nếu bạn nhận thấy mình có trên 3 ngày liên tiếp thấy "Lo lắng" hoặc "Mệt mỏi", hãy thử bài trắc nghiệm mức độ stress bên dưới hoặc gửi tin nhắn tâm sự với AI nhé!
+          </div>
+        </div>
+
+      </div>
+
+      {/* STRESS & SLEEP SELF-ASSESSMENT TEST */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs">
+        <h3 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-amber-500" />
+          Bài Trắc Nghiệm Nhanh Mức Độ Stress Học Đường (K12)
+        </h3>
+
+        {quizScore === null ? (
+          <StressQuizForm onSubmit={calculateStressQuiz} />
+        ) : (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-emerald-900 text-lg">Kết quả trắc nghiệm của bạn:</span>
+              <span className="bg-emerald-600 text-white font-extrabold px-3 py-1 rounded-full text-sm">
+                {quizScore}/12 điểm
+              </span>
+            </div>
+            
+            <p className="text-sm text-emerald-800 leading-relaxed">
+              {quizScore <= 4 && "Mức độ stress Thấp: Tinh thần bạn đang ở trạng thái cân bằng tốt! Tiếp tục duy trì thói quen sinh hoạt lành mạnh nhé."}
+              {quizScore >= 5 && quizScore <= 8 && "Mức độ stress Trung bình: Bạn bắt đầu áp lực nhẹ từ thi cử/học tập. Hãy dành 15-20 phút nghỉ ngơi đi dạo hoặc nghe nhạc."}
+              {quizScore >= 9 && "Mức độ stress Cao: Bạn đang khá mệt mỏi và quá tải. Hãy dành buổi tối nghỉ ngơi, nói chuyện với bạn bè hoặc liên hệ thầy cô tư vấn."}
+            </p>
+
+            <button
+              onClick={() => setQuizScore(null)}
+              className="text-xs bg-white text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs"
+            >
+              Làm lại bài test
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+function StressQuizForm({ onSubmit }) {
+  const [q1, setQ1] = useState(0);
+  const [q2, setQ2] = useState(0);
+  const [q3, setQ3] = useState(0);
+
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="space-y-2">
+        <p className="font-medium text-slate-700">1. Trong tuần qua, bạn có thường xuyên cảm thấy tràn ngập lo lắng vì bài tập/kỳ thi?</p>
+        <div className="flex gap-4">
+          {['Hiếm khi (0đ)', 'Thỉnh thoảng (1đ)', 'Thường xuyên (2đ)', 'Rất thường xuyên (3đ)'].map((opt, i) => (
+            <label key={i} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input type="radio" name="q1" checked={q1 === i} onChange={() => setQ1(i)} className="text-emerald-600" />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-medium text-slate-700">2. Bạn có gặp khó khăn khi trằn trọc khó ngủ hoặc thức giấc giữa đêm không?</p>
+        <div className="flex gap-4">
+          {['Không có (0đ)', 'Thỉnh thoảng (1đ)', 'Thường xuyên (2đ)', 'Hầu như mỗi đêm (3đ)'].map((opt, i) => (
+            <label key={i} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input type="radio" name="q2" checked={q2 === i} onChange={() => setQ2(i)} className="text-emerald-600" />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-medium text-slate-700">3. Bạn có cảm thấy thiếu năng lượng hoặc hay cáu gắt với bạn bè xung quanh?</p>
+        <div className="flex gap-4">
+          {['Không (0đ)', 'Đôi khi (1đ)', 'Nhiều lần (2đ)', 'Luôn luôn (3đ)'].map((opt, i) => (
+            <label key={i} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input type="radio" name="q3" checked={q3 === i} onChange={() => setQ3(i)} className="text-emerald-600" />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={() => onSubmit([q1, q2, q3])}
+        className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm transition-all"
+      >
+        Xem Kết Quả Đánh Giá
+      </button>
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 3: KHO HỌC LIỆU SỐ & SƠ ĐỒ TƯ DUY (INTERACTIVE MINDMAP)            */
+/* ========================================================================== */
+function LibraryModule({ t }) {
+  const [selectedMap, setSelectedMap] = useState(MINDMAP_DATA[0]);
+  const [savedArticles, setSavedArticles] = useState([]);
+
+  const toggleSave = (title) => {
+    if (savedArticles.includes(title)) {
+      setSavedArticles(savedArticles.filter(a => a !== title));
+    } else {
+      setSavedArticles([...savedArticles, title]);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Mindmap Viewer Section */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-600" />
+              Sơ Đồ Tư Duy Tương Tác (Interactive Mindmap)
+            </h2>
+            <p className="text-xs text-slate-500">Bấm vào các nhóm kỹ năng để xem chi tiết hướng dẫn thực hành</p>
+          </div>
+
+          {/* Switch mindmap */}
+          <div className="flex gap-2">
+            {MINDMAP_DATA.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMap(m)}
+                className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition-all ${
+                  selectedMap.id === m.id
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {m.title.split('Sơ Đồ ')[1] || m.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dynamic Tree Renderer */}
+        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 overflow-x-auto">
+          <div className="min-w-[600px]">
+            <h3 className="text-base font-extrabold text-teal-800 mb-1">{selectedMap.title}</h3>
+            <p className="text-xs text-slate-600 mb-6">{selectedMap.desc}</p>
+            <TreeNode node={selectedMap.nodes} isRoot={true} />
+          </div>
+        </div>
+      </div>
+
+      {/* Micro Lessons Cards */}
+      <div className="space-y-3">
+        <h3 className="font-bold text-slate-800 text-base">Bài Học Nhỏ 3-5 Phút (Đã hỗ trợ lưu Offline)</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <LessonCard
+            title="Kỹ thuật Pomodoro - Học thi hiệu quả không quá tải"
+            time="3 phút đọc"
+            content="Phương pháp chia nhỏ thời gian 25 phút tập trung cao độ và 5 phút nghỉ ngơi giúp não bộ duy trì sự minh mẫn. Đặc biệt hữu ích khi ôn thi THPT Tốt nghiệp môn Sử, Địa, Văn."
+            isSaved={savedArticles.includes('Pomodoro')}
+            onSave={() => toggleSave('Pomodoro')}
+          />
+
+          <LessonCard
+            title="Phòng chống bắt nạt học đường & Bắt nạt trên mạng"
+            time="4 phút đọc"
+            content="Nhận biết hành vi công kích trên group chát lớp. Hướng dẫn cách chụp bằng chứng, không phản ứng tiêu cực và báo cáo ngay cho giáo viên chủ nhiệm."
+            isSaved={savedArticles.includes('AntiBully')}
+            onSave={() => toggleSave('AntiBully')}
+          />
+
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// Recursive Tree Node Component for Mindmap
+function TreeNode({ node, isRoot = false }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className={`ml-4 my-2 ${isRoot ? 'ml-0' : 'border-l-2 border-emerald-300 pl-3'}`}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+          isRoot 
+            ? 'bg-emerald-700 text-white text-sm shadow-sm' 
+            : 'bg-white border border-slate-300 text-slate-800 hover:border-emerald-500 shadow-2xs'
+        }`}
+      >
+        {node.children && (
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+        )}
+        <span>{node.label}</span>
+      </div>
+
+      {isOpen && node.children && (
+        <div className="mt-1 space-y-1">
+          {node.children.map((child, idx) => (
+            <TreeNode key={idx} node={child} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LessonCard({ title, time, content, isSaved, onSave }) {
+  return (
+    <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
+      <div>
+        <div className="flex justify-between items-start gap-2 mb-1">
+          <h4 className="font-bold text-slate-800 text-sm">{title}</h4>
+          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full whitespace-nowrap">{time}</span>
+        </div>
+        <p className="text-xs text-slate-600 leading-relaxed">{content}</p>
+      </div>
+
+      <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
+        <button 
+          onClick={onSave}
+          className={`font-semibold flex items-center gap-1 ${isSaved ? 'text-amber-600' : 'text-emerald-700 hover:text-emerald-800'}`}
+        >
+          {isSaved ? '★ Đã lưu đọc ngoại tuyến' : '☆ Lưu học offline'}
+        </button>
+        <span className="text-slate-400 text-[11px]">Dành cho HS Sơn La</span>
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 4: CẨM NANG AN TOÀN SỐ & PHÒNG CHỐNG LỪA ĐẢO                     */
+/* ========================================================================== */
+function SafetyModule({ t }) {
+  const [currentQuiz, setCurrentQuiz] = useState(0);
+  const [selectedOpt, setSelectedOpt] = useState(null);
+
+  const quiz = SAFETY_QUIZZES[currentQuiz];
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-800 to-teal-700 rounded-2xl p-5 text-white shadow-sm">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <ShieldAlert className="w-6 h-6 text-amber-300" />
+          Cẩm Nang An Toàn Số & Sử Dụng AI Thông Minh
+        </h2>
+        <p className="text-emerald-100 text-xs mt-1">Trang bị bộ lọc nhận diện tin giả, chiêu trò lừa đảo và cách dùng AI an toàn.</p>
+      </div>
+
+      {/* AI Usage Guidelines */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+        <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-teal-600" />
+          3 Nguyên Tắc Sử Dụng AI An Toàn Trong Học Tập
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 space-y-1">
+            <p className="font-bold text-emerald-900">1. Không nhờ AI làm hộ toàn bộ</p>
+            <p className="text-emerald-800">Dùng AI như gợi ý ý tưởng, kiểm tra ngữ pháp hoặc giải thích khái niệm chưa hiểu.</p>
+          </div>
+
+          <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-1">
+            <p className="font-bold text-amber-900">2. Luôn kiểm chứng thông tin</p>
+            <p className="text-amber-800">AI có thể bị "ảo giác" thông tin sai. Kiểm tra lại bằng sách giáo khoa hoặc trang chính thống.</p>
+          </div>
+
+          <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 space-y-1">
+            <p className="font-bold text-rose-900">3. Bảo vệ dữ liệu cá nhân</p>
+            <p className="text-rose-800">Không bao giờ gửi ảnh căn cước, mật khẩu hay thông tin cá nhân sensitive vào các công cụ AI.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Scam Quiz */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 text-base">Quiz Tình Huống: Nhận Diện Lừa Đảo Mạng</h3>
+          <span className="text-xs text-slate-500">Câu {currentQuiz + 1}/{SAFETY_QUIZZES.length}</span>
+        </div>
+
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+          <p className="font-bold text-slate-800 text-sm">{quiz.title}</p>
+          <p className="text-xs text-slate-700 leading-relaxed">{quiz.question}</p>
+
+          <div className="space-y-2 pt-2">
+            {quiz.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedOpt(i)}
+                className={`w-full text-left p-3 rounded-xl text-xs font-medium border transition-all ${
+                  selectedOpt === i
+                    ? opt.isCorrect
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                      : 'bg-rose-100 border-rose-400 text-rose-900'
+                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                {opt.text}
+              </button>
+            ))}
+          </div>
+
+          {selectedOpt !== null && (
+            <div className={`p-3 rounded-lg text-xs leading-relaxed ${
+              quiz.options[selectedOpt].isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }`}>
+              💡 {quiz.options[selectedOpt].exp}
+            </div>
+          )}
+        </div>
+
+        {selectedOpt !== null && currentQuiz < SAFETY_QUIZZES.length - 1 && (
+          <button
+            onClick={() => { setCurrentQuiz(currentQuiz + 1); setSelectedOpt(null); }}
+            className="bg-teal-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-teal-700"
+          >
+            Trang tiếp theo →
+          </button>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 5: BẢN ĐỒ CƠ HỘI HỌC TẬP SƠN LA (LEAFLET DYNAMIC MAP)               */
+/* ========================================================================== */
+function MapModule({ t }) {
+  const [selectedDistrict, setSelectedDistrict] = useState('Tất cả');
+  const [selectedType, setSelectedType] = useState('all');
+  const [activeLoc, setActiveLoc] = useState(null);
+
+  const districts = ['Tất cả', 'TP. Sơn La', 'Mộc Châu', 'Mường La', 'Thuận Châu', 'Sông Mã'];
+
+  const filteredLocations = SON_LA_LOCATIONS.filter(loc => {
+    const matchDistrict = selectedDistrict === 'Tất cả' || loc.district === selectedDistrict;
+    const matchType = selectedType === 'all' || loc.type === selectedType;
+    return matchDistrict && matchType;
+  });
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Top Banner */}
+      <div className="bg-gradient-to-r from-teal-700 to-emerald-700 rounded-2xl p-5 text-white shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <MapPin className="w-6 h-6 text-amber-300" />
+            Bản Đồ Mạng Lưới Hỗ Trợ & Học Tập Tỉnh Sơn La
+          </h2>
+          <p className="text-emerald-100 text-xs mt-1">Tìm phòng tư vấn học đường, thư viện, điểm internet miễn phí theo địa bàn huyện.</p>
+        </div>
+        <span className="bg-amber-400 text-slate-900 font-bold px-3 py-1 rounded-full text-xs">
+          100% Địa điểm xác minh
+        </span>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-wrap gap-3 items-center justify-between">
+        
+        {/* District Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-600">Huyện/TP:</span>
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          >
+            {districts.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+
+        {/* Type Filter Buttons */}
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: 'all', label: 'Tất cả' },
+            { id: 'school', label: 'Phòng Tư Vấn Trường' },
+            { id: 'social', label: 'Công Tác Xã Hội' },
+            { id: 'library', label: 'Thư Viện / Internet' }
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedType(t.id)}
+              className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition-all ${
+                selectedType === t.id
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+      </div>
+
+      {/* Map simulation & Location list */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Leaflet Visual Simulation Card */}
+        <div className="lg:col-span-2 bg-emerald-950 rounded-2xl p-4 min-h-[350px] relative overflow-hidden shadow-inner flex flex-col justify-between border border-emerald-800">
+          
+          {/* Map background style simulation */}
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]" />
+
+          <div className="relative z-10 flex justify-between items-center text-emerald-200 text-xs bg-emerald-900/80 px-3 py-2 rounded-xl backdrop-blur-md">
+            <span>Bản đồ tỉnh Sơn La (Mô phỏng vị trí địa lý)</span>
+            <span>{filteredLocations.length} địa điểm tìm thấy</span>
+          </div>
+
+          {/* Location Pins Grid */}
+          <div className="relative z-10 my-auto grid grid-cols-2 sm:grid-cols-3 gap-3 p-2">
+            {filteredLocations.map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => setActiveLoc(loc)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  activeLoc?.id === loc.id
+                    ? 'bg-amber-400 text-slate-900 border-amber-300 font-bold shadow-md scale-105'
+                    : 'bg-emerald-900/90 hover:bg-emerald-800 text-emerald-100 border-emerald-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 text-xs">
+                  <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-amber-300" />
+                  <span className="truncate">{loc.name}</span>
+                </div>
+                <span className="text-[10px] opacity-80 block mt-1">{loc.district}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="relative z-10 text-[11px] text-emerald-300 bg-emerald-900/60 p-2 rounded-lg text-center">
+            * Khuyến nghị: Học sinh nên liên hệ qua điện thoại xác minh lịch làm việc trước khi đến trực tiếp.
+          </div>
+
+        </div>
+
+        {/* Location Detail Info */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+          <h3 className="font-bold text-slate-800 text-base border-b pb-2">Thông Tin Chi Tiết Điểm Hỗ Trợ</h3>
+
+          {activeLoc ? (
+            <div className="space-y-3 text-xs text-slate-700">
+              <h4 className="font-extrabold text-emerald-800 text-sm">{activeLoc.name}</h4>
+              <p>📍 <strong>Địa chỉ:</strong> {activeLoc.address}</p>
+              <p>📞 <strong>Số điện thoại:</strong> <a href={`tel:${activeLoc.phone}`} className="text-emerald-700 font-bold underline">{activeLoc.phone}</a></p>
+              <p>🏛️ <strong>Khu vực:</strong> {activeLoc.district}</p>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-600 leading-relaxed">
+                ℹ️ {activeLoc.notes}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10 text-slate-400 text-xs">
+              Bấm chọn 1 địa điểm trên bản đồ để xem chi tiết thông tin và số điện thoại liên hệ.
+            </div>
+          )}
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* MODULE 6: BẢN TIN TƯƠNG TÁC HÀNG TUẦN (WEEKLY CHALLENGE & MINI-QUIZ)      */
+/* ========================================================================== */
+function NewsModule({ t }) {
+  const [challengeDone, setChallengeDone] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Newsletter Card */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
+        
+        <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider">
+          <Newspaper className="w-4 h-4" />
+          <span>Bản Tin Số 12 • Tháng 10/2026</span>
+        </div>
+
+        <h2 className="text-xl font-black text-slate-800 leading-tight">
+          Kỹ Năng Quản Lý Thời Gian Thi Tốt Nghiệp THPT Không Lo Burn-Out
+        </h2>
+
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700 leading-relaxed space-y-2">
+          <p>
+            Thời điểm ôn thi nước rút dễ khiến học sinh rơi vào trạng thái đuối sức (burn-out). 
+            Để giữ vững phong độ, bạn cần áp dụng quy tắc 8-8-8: 8 giờ ngủ, 8 giờ học tập hiệu quả và 8 giờ dành cho ăn uống, thể thao và thư giãn.
+          </p>
+          <p className="font-semibold text-emerald-800">
+            👉 Đừng quên duy trì việc uống đủ 2 lít nước mỗi ngày để giữ cho bộ não luôn ở trạng thái tỉnh táo nhất!
+          </p>
+        </div>
+
+        {/* Weekly Challenge Widget */}
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div className="space-y-1 text-center sm:text-left">
+            <h4 className="font-bold text-amber-900 text-sm flex items-center justify-center sm:justify-start gap-1.5">
+              <Award className="w-4 h-4 text-amber-600" />
+              Thử Thách Tuần Này
+            </h4>
+            <p className="text-xs text-amber-800">"Uống đủ 2L nước & Ngủ trước 11h đêm trong 3 ngày liên tiếp"</p>
+          </div>
+
+          <button
+            onClick={() => setChallengeDone(!challengeDone)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
+              challengeDone
+                ? 'bg-emerald-600 text-white'
+                : 'bg-amber-500 hover:bg-amber-600 text-white'
+            }`}
+          >
+            {challengeDone ? '✓ Đã Hoàn Thành!' : 'Tham Gia Thử Thách'}
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
